@@ -1,0 +1,21 @@
+baubuddy:
+  login_url: "https://api.baubuddy.de/dev/index.php/login"
+  login: {
+    "username": "365",
+    "password": "1"
+  }
+  headers: {
+    "Authorization": "Basic QVBJX0V4cGxvcmVyOjEyMzQ1NmlzQUxhbWVQYXNz",
+    "Content-Type": "application/json"
+  }
+  vehicles_url: "https://api.baubuddy.de/dev/index.php/v1/vehicles/select/active"
+  labels_url: "https://api.baubuddy.de/dev/index.php/v1/labels/"
+
+client:
+  server_url: "http://localhost:8000/api/vehicles"
+  file_path: "vehicles.csv"
+  colors: {
+    "green": "007500",
+    "orange": "FFA500",
+    "red": "b30000"
+  }

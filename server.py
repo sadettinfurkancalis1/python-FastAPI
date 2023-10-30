@@ -1,83 +1,99 @@
 """
+to run this server use =
 uvicorn server:app --reload
 
 """
 
-
 import io
-import pandas as pd
 import requests
-from fastapi import FastAPI, File, UploadFile, Form
-from typing import List
+import yaml
+from fastapi import FastAPI, File, UploadFile
 import csv
-import codecs
+
 app = FastAPI()
 
-BAUBUDDY_API_URL = "https://api.baubuddy.de/dev/index.php"
-BAUBUDDY_API_LOGIN = {
-    "username": "365",
-    "password": "1"
-}
+with open("config.yml","r") as file:
+    init_settings = yaml.safe_load(file)
 
-COLOR_CODES_API_URL = "https://api.baubuddy.de/dev/index.php/v1/labels/{}"
 
 def access_to_api():
+    """
+    accessing api for Authorization token
+    :return:
+    """
     response = requests.post(
-        "https://api.baubuddy.de/index.php/login",
-        headers={
-            "Authorization": "Basic QVBJX0V4cGxvcmVyOjEyMzQ1NmlzQUxhbWVQYXNz",
-            "Content-Type": "application/json"
-        },
-        json=BAUBUDDY_API_LOGIN
+        url= init_settings["baubuddy"]["login_url"],
+        headers=init_settings["baubuddy"]["headers"],
+        json=init_settings["baubuddy"]["login"]
     )
-    response.raise_for_status()
     return response.json()["oauth"]["access_token"]
 
-def create_labelid_endpoint(vehicle_list,access_header):
+
+def create_labelid_endpoint(vehicle_list, access_header):
+    """
+    Get colorCodes from API if exist in
+    vehicle's labelId endpoint
+    """
     for vehicle in vehicle_list:
-        if vehicle["labelIds"] != None and vehicle["labelIds"] != "":
-            color_code_endpoint = "https://api.baubuddy.de/dev/index.php/v1/labels/" + vehicle["labelIds"]
+        if vehicle["labelIds"] is not None and vehicle["labelIds"] != "":
+            color_code_endpoint = init_settings["baubuddy"]["labels_url"] + vehicle["labelIds"]
             color_code_response = requests.get(color_code_endpoint, headers=access_header)
-            vehicle["labelIds"] = color_code_response.json()["colorCode"]
+            vehicle_list["colorCode"] = color_code_response.json()["colorCode"]
     return vehicle_list
 
-def check_vehicles(csv_vehicles,old_vehicles):
 
-    def fill_Nones(lst):
+def check_vehicles(csv_vehicles, api_vehicles):
+    """
+    Checking api datas and vehicle datas
+    and returning one merged data
+    """
+
+    def fill_nones(lst):
+        """
+        filling none with "" because when comparing
+        with another data it becomes problem
+        """
         for vehicle in lst:
             for key in vehicle.keys():
                 if vehicle[key] is None:
                     vehicle[key] = ""
         return lst
 
-    csv_vehicles = fill_Nones(csv_vehicles)
-    old_vehicles = fill_Nones(old_vehicles)
+    def add_checked_data(data, vehicle_list):
+        """
+        checking if data["hu"] is empty or not
+        and returning with nonempty datas
+        """
+        for vehicle in vehicle_list:
+            if "hu" in vehicle and vehicle["hu"] != "":
+                data.append(vehicle)
+        return data
 
-    checked_data = []
-    for csv_vehicle in csv_vehicles:
-        for old_vehicle in old_vehicles:
-            if csv_vehicle.items() <= old_vehicle.items():
-                checked_data.append(old_vehicle)
+    csv_vehicles = fill_nones(csv_vehicles)
+    api_vehicles = fill_nones(api_vehicles)
+
+    checked_data = add_checked_data([], csv_vehicles)
+    checked_data = add_checked_data(checked_data, api_vehicles)
 
     return checked_data
 
 @app.post("/api/vehicles")
 def submit_csv(file: UploadFile = File(...)):
+    # Csv reading Part
     contents = file.file.read()
     buffer = io.StringIO(contents.decode('utf-8'))
-    csvReader = list(csv.DictReader(buffer,delimiter = ';'))
+    csv_reader = list(csv.DictReader(buffer, delimiter=';'))
 
+    # find access token and send request to API
     access_token = access_to_api()
     access_header = {"Authorization": f"Bearer {access_token}"}
+    api_response = requests.get(
+        init_settings["baubuddy"]["vehicles_url"],
+        headers=access_header
+    )
 
-    api_response = requests.get("https://api.baubuddy.de/dev/index.php/v1/vehicles/select/active",headers=access_header)
+    # vehicle_infos = create_labelid_endpoint(vehicle_infos,access_header) # try to find solution
     vehicle_infos = api_response.json()
-
-    checked_json = check_vehicles(csvReader,vehicle_infos)
-    #last_json = [car for car in checked_json if car["hu"] != "" or None]
+    checked_json = check_vehicles(csv_reader, vehicle_infos)
 
     return checked_json
-
-
-
-
