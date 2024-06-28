@@ -1,14 +1,3 @@
-Hello dear python dev!
-
-This repository is supposed to act as a playground for your submission.
-
-Before getting started, please make sure use this repository as a **template** and create your own **public** repository, on which you will commit and push your code regularly. 
-Once you are ready, please mail us back the link to your repository. 
-
-Below, you will find the **Task** definition.
-
-Happy Hacking :computer:
-
 # Task
 
 Write two python scripts that have to achieve the common goal to downloads a certain set of resources, merges them with CSV-transmitted resources, and converts them to a formatted excel file.
